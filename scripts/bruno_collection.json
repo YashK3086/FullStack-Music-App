@@ -1,0 +1,146 @@
+{
+  "name": "Smart Music App API",
+  "version": "1",
+  "items": [
+    {
+      "name": "Start Session (Gym Mode)",
+      "request": {
+        "method": "POST",
+        "url": "{{api_url}}/session/start",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ],
+        "body": {
+          "mode": "json",
+          "json": "{\n  \"is_focus_mode\": true,\n  \"focus_context\": \"gym\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Recommendations",
+      "request": {
+        "method": "GET",
+        "url": "{{api_url}}/recommendations",
+        "headers": [
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Create Playlist",
+      "request": {
+        "method": "POST",
+        "url": "{{api_url}}/playlists",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ],
+        "body": {
+          "mode": "json",
+          "json": "{\n  \"name\": \"My Gym Mix\",\n  \"track_ids\": [\"track_002\", \"track_004\", \"track_013\"]\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Playlists",
+      "request": {
+        "method": "GET",
+        "url": "{{api_url}}/playlists",
+        "headers": [
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Update Playlist",
+      "request": {
+        "method": "PUT",
+        "url": "{{api_url}}/playlists/{{playlist_id}}",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ],
+        "body": {
+          "mode": "json",
+          "json": "{\n  \"name\": \"Updated Gym Mix Name\",\n  \"track_ids\": [\"track_002\", \"track_004\"]\n}"
+        }
+      }
+    },
+    {
+      "name": "Delete Playlist",
+      "request": {
+        "method": "DELETE",
+        "url": "{{api_url}}/playlists/{{playlist_id}}",
+        "headers": [
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Toggle Favorite Track",
+      "request": {
+        "method": "POST",
+        "url": "{{api_url}}/tracks/favorite",
+        "headers": [
+          {
+            "name": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "name": "Authorization",
+            "value": "{{id_token}}"
+          }
+        ],
+        "body": {
+          "mode": "json",
+          "json": "{\n  \"track_id\": \"track_004\"\n}"
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "api_url",
+      "value": "https://41voy9kid5.execute-api.us-east-1.amazonaws.com/dev",
+      "type": "string"
+    },
+    {
+      "key": "id_token",
+      "value": "YOUR_COGNITO_ID_TOKEN",
+      "type": "string"
+    },
+    {
+      "key": "playlist_id",
+      "value": "PLACEHOLDER_PLAYLIST_ID",
+      "type": "string"
+    }
+  ]
+}
