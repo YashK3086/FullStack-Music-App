@@ -59,7 +59,7 @@ jobs:
 
       - name: Run Backend Unit Tests
         run: |
-          python -m unittest scripts/test_backend.py
+          python -m unittest tests/test_backend.py
 
   # Terraform Validation Job
   terraform-ci:
