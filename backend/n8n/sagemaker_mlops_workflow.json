@@ -1,0 +1,330 @@
+{
+  "name": "SageMaker KNN Retraining & Lifecycle Cleanup",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 3 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "90ba95ba-87b6-455b-b9f1-d8a43657a7d1",
+      "name": "Weekly Schedule (Sunday 3AM)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sagemaker-retrain",
+        "options": {}
+      },
+      "id": "b3e020f5-46ff-4c54-9721-a3f295b95ab5",
+      "name": "On-Demand Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        380,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "functionName": "fs-music-app-retrain-model",
+        "invocationType": "RequestResponse",
+        "payload": "={\n  \"trigger\": \"n8n-mlops-workflow\",\n  \"timestamp\": \"{{ $now.toString() }}\"\n}"
+      },
+      "id": "e44d7b29-e85d-4a15-b593-9ca48e24c2a5",
+      "name": "Invoke Training Lambda",
+      "type": "n8n-nodes-base.awsLambda",
+      "typeVersion": 1,
+      "position": [
+        600,
+        330
+      ],
+      "credentials": {
+        "awsSecrets": {
+          "id": "1",
+          "name": "AWS Account Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "id": "d0be1332-9b2f-4654-8e5b-b5cb7f920251",
+      "name": "Wait 1 Minute",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        820,
+        330
+      ]
+    },
+    {
+      "parameters": {
+        "action": "describeEndpoint",
+        "endpointName": "music-app-knn-endpoint"
+      },
+      "id": "51ce8ba7-fa4e-4f24-9b16-568bfd3c631e",
+      "name": "Describe Endpoint Status",
+      "type": "n8n-nodes-base.awsSagemaker",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        330
+      ],
+      "credentials": {
+        "awsSecrets": {
+          "id": "1",
+          "name": "AWS Account Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.EndpointStatus }}",
+              "value2": "InService"
+            }
+          ]
+        }
+      },
+      "id": "5bf22fa2-bc42-4f36-a18d-f5eb33d596ee",
+      "name": "Is Endpoint InService?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        330
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.EndpointStatus }}",
+              "value2": "Creating"
+            }
+          ]
+        }
+      },
+      "id": "0b14c3e8-5b43-4e41-af91-4cfcbcd94b62",
+      "name": "Is Endpoint Still Creating?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "functionName": "fs-music-app-update-recs-config",
+        "invocationType": "RequestResponse",
+        "payload": "={\n  \"new_endpoint_name\": \"music-app-knn-endpoint\",\n  \"deployed_at\": \"{{ $now.toString() }}\"\n}"
+      },
+      "id": "fa803d2e-0a56-4b2a-bf31-29be103fbc1d",
+      "name": "Switch Traffic Lambda",
+      "type": "n8n-nodes-base.awsLambda",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        280
+      ],
+      "credentials": {
+        "awsSecrets": {
+          "id": "1",
+          "name": "AWS Account Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "action": "deleteEndpoint",
+        "endpointName": "music-app-knn-endpoint-old"
+      },
+      "id": "9ca190e3-e2bf-4632-a5ab-85a22877de2e",
+      "name": "Delete Old Endpoint",
+      "type": "n8n-nodes-base.awsSagemaker",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        280
+      ],
+      "credentials": {
+        "awsSecrets": {
+          "id": "1",
+          "name": "AWS Account Credentials"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_MOCK_DISCORD_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"embeds\": [\n    {\n      \"title\": \"🚀 SageMaker KNN Model Retraining Completed Successfully\",\n      \"color\": 3066993,\n      \"description\": \"The KNN recommendation model has been retrained and successfully deployed in production.\",\n      \"fields\": [\n        {\n          \"name\": \"New Endpoint\",\n          \"value\": \"`music-app-knn-endpoint`\",\n          \"inline\": true\n        },\n        {\n          \"name\": \"Status\",\n          \"value\": \"`InService (Traffic Switched)`\",\n          \"inline\": true\n        },\n        {\n          \"name\": \"Old Endpoint Cleared\",\n          \"value\": \"`Yes (Deleted to save costs)`\",\n          \"inline\": false\n        }\n      ],\n      \"timestamp\": \"{{ $now.toString() }}\"\n    }\n  ]\n}"
+      },
+      "id": "d0e19a4e-0a56-42bb-a0e1-0cbe113fd1a2",
+      "name": "Discord Webhook Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1880,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://discord.com/api/webhooks/YOUR_MOCK_DISCORD_WEBHOOK_URL",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"embeds\": [\n    {\n      \"title\": \"⚠️ SageMaker Model Retraining Failed / Timeout\",\n      \"color\": 15158332,\n      \"description\": \"The SageMaker endpoint failed to transition to InService, or another training error occurred.\",\n      \"fields\": [\n        {\n          \"name\": \"Endpoint Status\",\n          \"value\": \"`{{ $json.EndpointStatus || 'Unknown Error' }}`\",\n          \"inline\": true\n        }\n      ],\n      \"timestamp\": \"{{ $now.toString() }}\"\n    }\n  ]\n}"
+      },
+      "id": "3be03db0-128a-4c28-98e3-f0cb02df9100",
+      "name": "Discord Error Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1480,
+        600
+      ]
+    }
+  ],
+  "connections": {
+    "Weekly Schedule (Sunday 3AM)": {
+      "main": [
+        [
+          {
+            "node": "Invoke Training Lambda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On-Demand Webhook": {
+      "main": [
+        [
+          {
+            "node": "Invoke Training Lambda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invoke Training Lambda": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Minute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 1 Minute": {
+      "main": [
+        [
+          {
+            "node": "Describe Endpoint Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Describe Endpoint Status": {
+      "main": [
+        [
+          {
+            "node": "Is Endpoint InService?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Endpoint InService?": {
+      "main": [
+        [
+          {
+            "node": "Switch Traffic Lambda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Endpoint Still Creating?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Endpoint Still Creating?": {
+      "main": [
+        [
+          {
+            "node": "Wait 1 Minute",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord Error Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Traffic Lambda": {
+      "main": [
+        [
+          {
+            "node": "Delete Old Endpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Old Endpoint": {
+      "main": [
+        [
+          {
+            "node": "Discord Webhook Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionTimeout": 1800
+  },
+  "id": "1",
+  "active": false
+}
